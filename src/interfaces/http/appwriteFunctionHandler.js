@@ -251,7 +251,11 @@ export const createAppwriteFunctionHandler = ({
     } catch (err) {
       const code = err?.code ?? 500;
       const message = err?.message ? String(err.message) : String(err);
-      errLogger(`Error: ${message}`);
+      if (code >= 500) {
+        errLogger(`Error: ${message}`);
+      } else {
+        logger(`Warn: ${message}`);
+      }
 
       if (code === 401) {
         return json(res, 401, {

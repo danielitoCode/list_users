@@ -7,8 +7,9 @@ import { createAppwriteFunctionHandler } from "../interfaces/http/appwriteFuncti
 export const createApp = ({ log, error } = {}) => {
   const config = getAppwriteConfig(process.env);
   const allowedAdminLabels = getAllowedAdminLabels(process.env);
+  const allowUnverifiedUserId = process.env.ALLOW_UNVERIFIED_USER_ID === "1";
 
-  const usersGateway = createAppwriteUsersGateway({ config });
+  const usersGateway = createAppwriteUsersGateway({ config, allowUnverifiedUserId });
 
   const userCrudService = createUserCrudService({
     usersGateway,
@@ -23,4 +24,3 @@ export const createApp = ({ log, error } = {}) => {
     error,
   });
 };
-

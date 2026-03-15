@@ -38,11 +38,16 @@ Label(s) admin:
 
 La función intenta identificar al solicitante así:
 
-1) Header `x-appwrite-user-id` (inyectado por Appwrite cuando hay sesión)
-2) Header `x-appwrite-user-jwt` o `x-appwrite-jwt` (si lo envías tú)
-3) Body `requesterJwt` / `jwt` / `appwriteJwt` (útil para `createExecution`)
+1) Header `x-appwrite-user-jwt` o `x-appwrite-jwt` (recomendado)
+2) Body `requesterJwt` / `jwt` / `appwriteJwt` (útil para `createExecution`)
+3) Header `x-appwrite-user-id` **solo si** `ALLOW_UNVERIFIED_USER_ID=1` (solo recomendado para pruebas locales)
 
 Si no puede identificar usuario, responde `401`.
+
+### ¿Quién envía el ID/JWT?
+
+- **Vía Appwrite SDK (frontend, con sesión):** normalmente el SDK ejecuta la Function usando la sesión del usuario. La Function puede recibir `x-appwrite-user-id` (si Appwrite lo inyecta) o, en su defecto, puedes enviar un JWT.
+- **Vía dominio HTTP (Function URL):** las ejecuciones por dominio no están autenticadas por Appwrite; para identificar al usuario debes enviar un **JWT** en el header `x-appwrite-user-jwt` (recomendado) o `x-appwrite-jwt`.
 
 ## Endpoints (Function URL / HTTP)
 
@@ -56,6 +61,28 @@ Si no puede identificar usuario, responde `401`.
 - `PATCH /users/{userId}/verification` → verificación (body: `{ "emailVerification": true|false, "phoneVerification": true|false }`)
 - `DELETE /users/{userId}` → elimina usuario
 
+### Uso vía HTTP (Function URL)
+
+1) En la consola de Appwrite, en la Function, habilita **Execute access = Any** si vas a usar el dominio de la Function URL.
+2) Obtén un JWT del usuario (desde tu frontend) y envíalo en `x-appwrite-user-jwt`.
+
+Ejemplo (listar):
+
+```bash
+curl -X GET "https://<TU-FUNCTION-DOMAIN>/users" \
+  -H "x-appwrite-user-jwt: <JWT_DEL_USUARIO>" \
+  -H "Content-Type: application/json"
+```
+
+Ejemplo (cambiar status):
+
+```bash
+curl -X PATCH "https://<TU-FUNCTION-DOMAIN>/users/<USER_ID>/status" \
+  -H "x-appwrite-user-jwt: <JWT_DEL_USUARIO>" \
+  -H "Content-Type: application/json" \
+  -d "{\"status\":false}"
+```
+
 ## Modo `createExecution` (sin path)
 
 Si ejecutas la función con `functions.createExecution(...)` y no hay `path`, usa `POST /` con body JSON que incluya:
@@ -63,6 +90,56 @@ Si ejecutas la función con `functions.createExecution(...)` y no hay `path`, us
 - `action`: `list` | `get` | `create` | `update` | `delete`
 - y los campos necesarios (`userId`, `email`, etc.)
 - opcional: `requesterJwt` (recomendado si no hay contexto de usuario)
+
+### Uso vía Appwrite SDK
+
+#### Frontend (recomendado)
+
+Opción A (si tu SDK soporta `path` + `method` en `createExecution`): aprovecha las rutas:
+
+- `path: "/users"` + `method: "GET"` para listar
+- `path: "/users/<USER_ID>/status"` + `method: "PATCH"` y `body: "{\"status\":false}"`
+
+Opción B (compatible con cualquier SDK): usa el modo `action` en el body.
+
+Ejemplo (JavaScript Web SDK):
+
+```js
+import { Client, Account, Functions } from "appwrite";
+
+const client = new Client()
+  .setEndpoint("https://<TU-ENDPOINT>/v1")
+  .setProject("<TU_PROJECT_ID>");
+
+const account = new Account(client);
+const functions = new Functions(client);
+
+// Si ya hay sesión, usualmente basta con ejecutar.
+// Si necesitas forzar identidad, crea un JWT y pásalo como requesterJwt.
+// const jwt = await account.createJWT(); // jwt.jwt
+
+const payload = { action: "list" /*, requesterJwt: jwt.jwt */ };
+
+const execution = await functions.createExecution(
+  "<TU_FUNCTION_ID>",
+  JSON.stringify(payload),
+  false
+);
+
+console.log(JSON.parse(execution.responseBody));
+```
+
+Ejemplo (actualizar status con action):
+
+```js
+const payload = { action: "update", userId: "<USER_ID>", status: false };
+await functions.createExecution("<TU_FUNCTION_ID>", JSON.stringify(payload), false);
+```
+
+#### Server SDK (Node)
+
+Con el SDK de servidor puedes ejecutar una Function pasando `path`, `method`, `headers` y `body`.
+Si el servidor no está actuando como un usuario logueado, envía `x-appwrite-user-jwt` (o `requesterJwt`) para que la Function pueda identificar al solicitante.
 
 ## Debug (solo local)
 

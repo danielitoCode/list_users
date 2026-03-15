@@ -12,13 +12,13 @@ const createUserClientFromJwt = (config, jwt) =>
     .setProject(config.projectId)
     .setJWT(jwt);
 
-export const createAppwriteUsersGateway = ({ config }) => {
+export const createAppwriteUsersGateway = ({ config, allowUnverifiedUserId = false }) => {
   const adminClient = createAdminClient(config);
   const users = new Users(adminClient);
 
   return {
     async getRequester({ requesterId, requesterJwt }) {
-      if (!requesterId && requesterJwt) {
+      if (requesterJwt) {
         const userClient = createUserClientFromJwt(config, requesterJwt);
         const account = new Account(userClient);
         const requester = await account.get();
@@ -26,6 +26,10 @@ export const createAppwriteUsersGateway = ({ config }) => {
       }
 
       if (!requesterId) return { requesterId: null, requester: null };
+
+      if (!allowUnverifiedUserId) {
+        return { requesterId: null, requester: null };
+      }
 
       const requester = await users.get(requesterId);
       return { requesterId, requester };
@@ -90,4 +94,3 @@ export const createAppwriteUsersGateway = ({ config }) => {
     },
   };
 };
-
