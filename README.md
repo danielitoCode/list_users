@@ -1,6 +1,14 @@
-# Appwrite Function: CRUD de Usuarios (solo Admin)
+# Appwrite Function: CRUD de Usuarios (solo Admin) + Clean Architecture
 
 Esta función sirve como endpoint de administración de usuarios en Appwrite, permitiendo CRUD **solo** si el solicitante tiene un label de admin.
+
+## Estructura (Clean Architecture)
+
+- `src/domain/` reglas puras (ej. política de admin por labels)
+- `src/application/` casos de uso (CRUD + autorización)
+- `src/interfaces/` adaptadores HTTP (Appwrite Function handler/router)
+- `src/infrastructure/` SDK Appwrite + config desde env
+- `src/startup/` composición/DI
 
 ## Requisitos
 
@@ -10,7 +18,7 @@ Esta función sirve como endpoint de administración de usuarios en Appwrite, pe
 
 ## Configuración (Appwrite Functions)
 
-La función soporta las variables inyectadas por Appwrite:
+Coloca tu API key como **variable de entorno** en la configuración de la Function (Settings → Variables). La función soporta las variables inyectadas por Appwrite:
 
 - `APPWRITE_FUNCTION_API_ENDPOINT`
 - `APPWRITE_FUNCTION_PROJECT_ID`
@@ -61,5 +69,14 @@ npm start
 O:
 
 ```bash
+node test-local.js
+```
+
+Ejemplo (PowerShell) para setear variables localmente:
+
+```powershell
+$env:APPWRITE_ENDPOINT="https://cloud.appwrite.io/v1"
+$env:APPWRITE_PROJECT_ID="TU_PROJECT_ID"
+$env:APPWRITE_API_KEY="TU_API_KEY"
 node test-local.js
 ```
