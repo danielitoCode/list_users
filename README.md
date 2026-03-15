@@ -40,6 +40,7 @@ La función intenta identificar al solicitante así:
 
 1) Header `x-appwrite-user-id` (inyectado por Appwrite cuando hay sesión)
 2) Header `x-appwrite-user-jwt` o `x-appwrite-jwt` (si lo envías tú)
+3) Body `requesterJwt` / `jwt` / `appwriteJwt` (útil para `createExecution`)
 
 Si no puede identificar usuario, responde `401`.
 
@@ -49,6 +50,10 @@ Si no puede identificar usuario, responde `401`.
 - `POST /users` → crea usuario (body JSON: `email` o `phone`, `password`, `name`, opcional `userId`, `labels`)
 - `GET /users/{userId}` → obtiene usuario
 - `PATCH /users/{userId}` → actualiza campos (body JSON soportado: `name`, `email`, `phone`, `password`, `status`, `labels`, `emailVerification`, `phoneVerification`)
+- `PATCH /users/{userId}/password` → cambia password (body: `{ "password": "..." }`)
+- `PATCH /users/{userId}/status` → activa/desactiva (body: `{ "status": true|false }`)
+- `PATCH /users/{userId}/labels` → reemplaza labels (body: `{ "labels": ["admin"] }`)
+- `PATCH /users/{userId}/verification` → verificación (body: `{ "emailVerification": true|false, "phoneVerification": true|false }`)
 - `DELETE /users/{userId}` → elimina usuario
 
 ## Modo `createExecution` (sin path)
@@ -57,6 +62,13 @@ Si ejecutas la función con `functions.createExecution(...)` y no hay `path`, us
 
 - `action`: `list` | `get` | `create` | `update` | `delete`
 - y los campos necesarios (`userId`, `email`, etc.)
+- opcional: `requesterJwt` (recomendado si no hay contexto de usuario)
+
+## Debug (solo local)
+
+Si quieres que los errores 404/500 regresen detalles (para entender qué pasó), setea:
+
+- `DEBUG_ERRORS=1`
 
 ## Pruebas locales
 

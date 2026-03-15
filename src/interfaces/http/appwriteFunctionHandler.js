@@ -44,7 +44,13 @@ export const createAppwriteFunctionHandler = ({
 
     const requesterId = headers["x-appwrite-user-id"];
     const requesterJwt =
-      headers["x-appwrite-user-jwt"] ?? headers["x-appwrite-jwt"];
+      headers["x-appwrite-user-jwt"] ??
+      headers["x-appwrite-jwt"] ??
+      body.requesterJwt ??
+      body.jwt ??
+      body.appwriteJwt;
+
+    const debugErrors = process.env.DEBUG_ERRORS === "1";
 
     try {
       // Health / help
@@ -153,6 +159,59 @@ export const createAppwriteFunctionHandler = ({
       }
 
       // /users/{userId}
+      const subRoute = path.match(/^\/users\/([^/]+)\/(password|status|labels|verification)$/);
+      if (subRoute) {
+        const userId = decodeURIComponent(subRoute[1]);
+        const action = subRoute[2];
+
+        if (method !== "PATCH") {
+          return json(res, 405, { success: false, error: "Método no permitido." });
+        }
+
+        if (action === "password") {
+          const user = await userCrudService.setUserPassword({
+            requesterId,
+            requesterJwt,
+            userId,
+            password: body.password,
+          });
+          return json(res, 200, { success: true, user });
+        }
+
+        if (action === "status") {
+          const user = await userCrudService.setUserStatus({
+            requesterId,
+            requesterJwt,
+            userId,
+            status: body.status,
+          });
+          return json(res, 200, { success: true, user });
+        }
+
+        if (action === "labels") {
+          const user = await userCrudService.setUserLabels({
+            requesterId,
+            requesterJwt,
+            userId,
+            labels: body.labels,
+          });
+          return json(res, 200, { success: true, user });
+        }
+
+        if (action === "verification") {
+          const user = await userCrudService.setUserVerification({
+            requesterId,
+            requesterJwt,
+            userId,
+            emailVerification: body.emailVerification,
+            phoneVerification: body.phoneVerification,
+          });
+          return json(res, 200, { success: true, user });
+        }
+
+        return json(res, 404, { success: false, error: "Ruta no encontrada." });
+      }
+
       const match = path.match(/^\/users\/([^/]+)$/);
       if (match) {
         const userId = decodeURIComponent(match[1]);
@@ -213,7 +272,10 @@ export const createAppwriteFunctionHandler = ({
       }
 
       if (code === 404) {
-        return json(res, 404, { success: false, error: "Recurso no encontrado." });
+        return json(res, 404, {
+          success: false,
+          error: debugErrors ? message : "Recurso no encontrado.",
+        });
       }
 
       if (code === 400) {
@@ -224,6 +286,7 @@ export const createAppwriteFunctionHandler = ({
         success: false,
         error: "Error interno al procesar la solicitud.",
         code,
+        ...(debugErrors ? { details: message } : {}),
       });
     } finally {
       logger(

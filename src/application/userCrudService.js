@@ -72,6 +72,49 @@ export const createUserCrudService = ({
       return usersGateway.update(userId, patch ?? {});
     },
 
+    async setUserPassword({ requesterId, requesterJwt, userId, password }) {
+      await ensureAdmin({ requesterId, requesterJwt });
+      if (!userId) throw badRequest("Falta `userId`.");
+      if (typeof password !== "string" || !password.length) {
+        throw badRequest("Falta `password`.");
+      }
+      return usersGateway.update(userId, { password });
+    },
+
+    async setUserStatus({ requesterId, requesterJwt, userId, status }) {
+      await ensureAdmin({ requesterId, requesterJwt });
+      if (!userId) throw badRequest("Falta `userId`.");
+      if (typeof status !== "boolean") throw badRequest("Falta `status` boolean.");
+      return usersGateway.update(userId, { status });
+    },
+
+    async setUserLabels({ requesterId, requesterJwt, userId, labels }) {
+      await ensureAdmin({ requesterId, requesterJwt });
+      if (!userId) throw badRequest("Falta `userId`.");
+      if (!Array.isArray(labels)) throw badRequest("Falta `labels` (array).");
+      return usersGateway.update(userId, { labels });
+    },
+
+    async setUserVerification({
+      requesterId,
+      requesterJwt,
+      userId,
+      emailVerification,
+      phoneVerification,
+    }) {
+      await ensureAdmin({ requesterId, requesterJwt });
+      if (!userId) throw badRequest("Falta `userId`.");
+      const patch = {};
+      if (typeof emailVerification === "boolean") patch.emailVerification = emailVerification;
+      if (typeof phoneVerification === "boolean") patch.phoneVerification = phoneVerification;
+      if (!Object.keys(patch).length) {
+        throw badRequest(
+          "Nada que actualizar. Envíe `emailVerification` y/o `phoneVerification` boolean."
+        );
+      }
+      return usersGateway.update(userId, patch);
+    },
+
     async deleteUser({ requesterId, requesterJwt, userId }) {
       await ensureAdmin({ requesterId, requesterJwt });
       if (!userId) throw badRequest("Falta `userId`.");
@@ -80,4 +123,3 @@ export const createUserCrudService = ({
     },
   };
 };
-
